@@ -418,3 +418,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
             cancelled: false
         });
         bidIdIndexInBidderList[bidId] = list.length;
+        list.push(bidId);
+        bidCountForStem[stemId]++;
+        bidIdsForStem[stemId].push(bidId);
+        _allBidIds.push(bidSequence);
+        if (msg.value > bidWei) {
+            (bool refund,) = msg.sender.call{value: msg.value - bidWei}("");
+            if (!refund) revert MFX_TransferFailed();
+        }
+        emit BidPlaced(bidId, stemId, msg.sender, bidWei, block.number, expiryBlock);
+        return bidId;
+    }
+
+    function cancelBid(bytes32 bidId) external whenNotPaused nonReentrant {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder != msg.sender) revert MFX_NotBidder();
+        if (b.filled) revert MFX_AlreadyFilled();
+        if (b.cancelled) revert MFX_AlreadyCancelled();
+        b.cancelled = true;
+        (bool sent,) = msg.sender.call{value: b.bidWei}("");
+        if (!sent) revert MFX_TransferFailed();
+        emit BidCancelled(bidId, msg.sender, block.number);
+    }
+
+    function updateBidAmount(bytes32 bidId, uint256 newBidWei) external payable whenNotPaused nonReentrant {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder != msg.sender) revert MFX_NotBidder();
+        if (b.filled || b.cancelled) revert MFX_BidNotFound();
+        if (block.number >= b.expiryBlock) revert MFX_BidExpired();
+        if (newBidWei < minListingWei || newBidWei > maxListingWei) revert MFX_BidMismatch();
+        uint256 prevWei = b.bidWei;
+        if (newBidWei > prevWei) {
+            if (msg.value < newBidWei - prevWei) revert MFX_InsufficientValue();
+            b.bidWei = newBidWei;
+            if (msg.value > newBidWei - prevWei) {
+                (bool refund,) = msg.sender.call{value: msg.value - (newBidWei - prevWei)}("");
+                if (!refund) revert MFX_TransferFailed();
+            }
+        } else if (newBidWei < prevWei) {
+            b.bidWei = newBidWei;
+            (bool sent,) = msg.sender.call{value: prevWei - newBidWei}("");
+            if (!sent) revert MFX_TransferFailed();
+        }
+        emit BidAmountUpdated(bidId, prevWei, b.bidWei, block.number);
+    }
+
+    function batchCancelBids(bytes32[] calldata bidIds) external whenNotPaused nonReentrant {
+        if (bidIds.length > MFX_MAX_BATCH_SIZE) revert MFX_BatchTooLarge();
+        for (uint256 i = 0; i < bidIds.length; i++) {
+            BidRecord storage b = bids[bidIds[i]];
+            if (b.bidder == msg.sender && !b.filled && !b.cancelled) {
+                b.cancelled = true;
+                (bool sent,) = msg.sender.call{value: b.bidWei}("");
+                if (!sent) revert MFX_TransferFailed();
+                emit BidCancelled(bidIds[i], msg.sender, block.number);
+            }
+        }
+        emit BatchBidsCancelled(bidIds, msg.sender, block.number);
+    }
+
+    function fillStemOffer(bytes32 stemId) external payable whenNotPaused nonReentrant {
