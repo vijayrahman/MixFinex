@@ -118,3 +118,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
     uint8 public constant MFX_SPLIT_COLLAB = 1;
     uint8 public constant MFX_SPLIT_ROYALTY = 2;
     uint256 public constant MFX_MIN_EXPIRY_BLOCKS = 5;
+    uint256 public constant MFX_MAX_EXPIRY_BLOCKS = 250000;
+
+    address public immutable treasury;
+    address public immutable feeVault;
+    address public immutable exchangeKeeper;
+    uint256 public immutable deployedBlock;
+    bytes32 public immutable exchangeDomain;
+
+    address public keeper;
+    uint256 public feeBps;
+    uint256 public minListingWei;
+    uint256 public maxListingWei;
+    uint256 public defaultExpiryBlocks;
+    uint256 public stemSequence;
+    uint256 public bidSequence;
+    uint256 public collabSequence;
+    bool public exchangePaused;
+
+    struct StemListing {
+        address lister;
+        bytes32 contentHash;
+        uint256 askWei;
+        uint256 listedAtBlock;
+        uint256 expiryBlock;
+        bool filled;
+        bool delisted;
+    }
+
+    struct BidRecord {
+        bytes32 stemId;
+        address bidder;
+        uint256 bidWei;
+        uint256 placedAtBlock;
+        uint256 expiryBlock;
+        bool filled;
+        bool cancelled;
+    }
+
+    struct CollabInvite {
+        bytes32 stemId;
+        address inviter;
+        address invitee;
+        uint256 shareBps;
+        uint256 sentAtBlock;
+        bool accepted;
+        bool rejected;
+    }
+
+    mapping(bytes32 => StemListing) public stems;
+    mapping(bytes32 => BidRecord) public bids;
+    mapping(bytes32 => CollabInvite) public collabs;
+    mapping(address => bytes32[]) public stemIdsByLister;
+    mapping(address => bytes32[]) public bidIdsByBidder;
+    mapping(bytes32 => uint256) public stemIdIndexInListerList;
+    mapping(bytes32 => uint256) public bidIdIndexInBidderList;
+    mapping(bytes32 => uint256) public totalRoyaltyPaid;
+    mapping(bytes32 => address[]) public collabParticipants;
+    mapping(bytes32 => uint256) public stemVolumeWei;
+    mapping(address => uint256) public listerVolumeWei;
+    mapping(address => uint256) public bidderVolumeWei;
