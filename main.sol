@@ -238,3 +238,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         emit MaxListingWeiUpdated(prev, newMax, block.number);
     }
 
+    function setDefaultExpiryBlocks(uint256 newBlocks) external onlyOwner {
+        if (newBlocks < MFX_MIN_EXPIRY_BLOCKS || newBlocks > MFX_MAX_EXPIRY_BLOCKS) revert MFX_ExpiryPast();
+        uint256 prev = defaultExpiryBlocks;
+        defaultExpiryBlocks = newBlocks;
+        emit DefaultExpiryBlocksUpdated(prev, newBlocks, block.number);
+    }
+
+    function _stemId(bytes32 contentHash_, address lister_, uint256 seq_) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(contentHash_, lister_, seq_));
+    }
+
+    function _bidId(bytes32 stemId_, address bidder_, uint256 bidWei_, uint256 seq_) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(stemId_, bidder_, bidWei_, seq_));
+    }
+
+    function _collabId(bytes32 stemId_, address inviter_, address invitee_, uint256 seq_) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(stemId_, inviter_, invitee_, seq_));
+    }
+
+    function listStem(bytes32 contentHash, uint256 askWei) external whenNotPaused nonReentrant returns (bytes32 stemId) {
+        if (contentHash == bytes32(0)) revert MFX_InvalidContentHash();
+        if (askWei < minListingWei) revert MFX_BelowMinListing();
+        if (askWei > maxListingWei) revert MFX_AboveMaxListing();
+        bytes32[] storage list = stemIdsByLister[msg.sender];
+        if (list.length >= MFX_MAX_LISTINGS_PER_USER) revert MFX_MaxListingsReached();
+
+        stemSequence++;
+        stemId = _stemId(contentHash, msg.sender, stemSequence);
+        if (stems[stemId].lister != address(0)) revert MFX_StemNotFound();
+
+        uint256 expiry = block.number + defaultExpiryBlocks;
+        stems[stemId] = StemListing({
+            lister: msg.sender,
+            contentHash: contentHash,
+            askWei: askWei,
+            listedAtBlock: block.number,
+            expiryBlock: expiry,
+            filled: false,
+            delisted: false
+        });
+        stemIdIndexInListerList[stemId] = list.length;
+        list.push(stemId);
+        _allStemIds.push(stemSequence);
+        emit StemListed(stemId, msg.sender, contentHash, askWei, block.number, expiry);
+        return stemId;
+    }
+
+    function listStemWithExpiry(bytes32 contentHash, uint256 askWei, uint256 expiryBlock) external whenNotPaused nonReentrant returns (bytes32 stemId) {
+        if (expiryBlock <= block.number) revert MFX_ExpiryPast();
+        if (expiryBlock - block.number < MFX_MIN_EXPIRY_BLOCKS || expiryBlock - block.number > MFX_MAX_EXPIRY_BLOCKS) revert MFX_ExpiryPast();
+        if (contentHash == bytes32(0)) revert MFX_InvalidContentHash();
+        if (askWei < minListingWei) revert MFX_BelowMinListing();
+        if (askWei > maxListingWei) revert MFX_AboveMaxListing();
+        bytes32[] storage list = stemIdsByLister[msg.sender];
+        if (list.length >= MFX_MAX_LISTINGS_PER_USER) revert MFX_MaxListingsReached();
+
+        stemSequence++;
+        stemId = _stemId(contentHash, msg.sender, stemSequence);
+        if (stems[stemId].lister != address(0)) revert MFX_StemNotFound();
+
