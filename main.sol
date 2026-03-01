@@ -358,3 +358,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
 
     function placeBid(bytes32 stemId, uint256 bidWei) external payable whenNotPaused nonReentrant returns (bytes32 bidId) {
         if (stems[stemId].lister == address(0)) revert MFX_StemNotFound();
+        if (stems[stemId].filled || stems[stemId].delisted) revert MFX_StemNotFound();
+        if (block.number >= stems[stemId].expiryBlock) revert MFX_ListingExpired();
+        if (bidWei < minListingWei) revert MFX_BelowMinListing();
+        if (bidWei > maxListingWei) revert MFX_AboveMaxListing();
+        if (msg.value < bidWei) revert MFX_InsufficientValue();
+        bytes32[] storage list = bidIdsByBidder[msg.sender];
+        if (list.length >= MFX_MAX_BIDS_PER_USER) revert MFX_MaxBidsReached();
+
+        bidSequence++;
+        bidId = _bidId(stemId, msg.sender, bidWei, bidSequence);
+        if (bids[bidId].bidder != address(0)) revert MFX_BidNotFound();
+
+        uint256 expiry = block.number + defaultExpiryBlocks;
+        bids[bidId] = BidRecord({
+            stemId: stemId,
+            bidder: msg.sender,
+            bidWei: bidWei,
+            placedAtBlock: block.number,
+            expiryBlock: expiry,
+            filled: false,
+            cancelled: false
+        });
+        bidIdIndexInBidderList[bidId] = list.length;
+        list.push(bidId);
+        bidCountForStem[stemId]++;
+        bidIdsForStem[stemId].push(bidId);
+        _allBidIds.push(bidSequence);
+        if (msg.value > bidWei) {
+            (bool refund,) = msg.sender.call{value: msg.value - bidWei}("");
+            if (!refund) revert MFX_TransferFailed();
+        }
+        emit BidPlaced(bidId, stemId, msg.sender, bidWei, block.number, expiry);
+        return bidId;
+    }
+
+    function placeBidWithExpiry(bytes32 stemId, uint256 bidWei, uint256 expiryBlock) external payable whenNotPaused nonReentrant returns (bytes32 bidId) {
+        if (expiryBlock <= block.number) revert MFX_ExpiryPast();
+        if (stems[stemId].lister == address(0)) revert MFX_StemNotFound();
+        if (stems[stemId].filled || stems[stemId].delisted) revert MFX_StemNotFound();
+        if (block.number >= stems[stemId].expiryBlock) revert MFX_ListingExpired();
+        if (bidWei < minListingWei) revert MFX_BelowMinListing();
+        if (bidWei > maxListingWei) revert MFX_AboveMaxListing();
+        if (msg.value < bidWei) revert MFX_InsufficientValue();
+        bytes32[] storage list = bidIdsByBidder[msg.sender];
+        if (list.length >= MFX_MAX_BIDS_PER_USER) revert MFX_MaxBidsReached();
+
+        bidSequence++;
+        bidId = _bidId(stemId, msg.sender, bidWei, bidSequence);
+        if (bids[bidId].bidder != address(0)) revert MFX_BidNotFound();
+
+        bids[bidId] = BidRecord({
+            stemId: stemId,
+            bidder: msg.sender,
+            bidWei: bidWei,
+            placedAtBlock: block.number,
+            expiryBlock: expiryBlock,
+            filled: false,
+            cancelled: false
+        });
+        bidIdIndexInBidderList[bidId] = list.length;
