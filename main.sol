@@ -178,3 +178,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
     mapping(bytes32 => uint256) public stemVolumeWei;
     mapping(address => uint256) public listerVolumeWei;
     mapping(address => uint256) public bidderVolumeWei;
+    mapping(bytes32 => uint256) public bidCountForStem;
+    mapping(bytes32 => bytes32[]) public bidIdsForStem;
+    mapping(address => uint256) public collabInvitesSent;
+    mapping(address => uint256) public collabInvitesReceived;
+    uint256 public totalVolumeWei;
+    uint256 public totalFeesWei;
+    uint256[] private _allStemIds;
+    uint256[] private _allBidIds;
+    uint256 private _feeTreasuryAccum;
+    uint256 private _feeVaultAccum;
+
+    modifier whenNotPaused() {
+        if (exchangePaused) revert MFX_ExchangePaused();
+        _;
+    }
+
+    constructor() {
+        treasury = address(0x8F3a2C5e7B1d4F6a9c0E3b6D8f1A4c7E0b3D6f9);
+        feeVault = address(0x2E6b9D4f8A1c3E5b7D0f2A4c6E8b1D3f5A7c9e0);
+        exchangeKeeper = address(0xB5d8F1a3C6e9b2D5f8A1c4E7b0D3f6A9c2E5b8);
+        deployedBlock = block.number;
+        exchangeDomain = keccak256(abi.encodePacked("MixFinex_", block.chainid, block.prevrandao, MFX_EXCHANGE_SALT));
+        keeper = msg.sender;
+        feeBps = 35;
+        minListingWei = 0.001 ether;
+        maxListingWei = 500 ether;
+        defaultExpiryBlocks = 50000;
+    }
+
+    function setExchangePaused(bool paused) external onlyOwner {
+        exchangePaused = paused;
+        emit ExchangePauseToggled(paused);
+    }
+
+    function setKeeper(address newKeeper) external onlyOwner {
+        if (newKeeper == address(0)) revert MFX_ZeroAddress();
+        address prev = keeper;
+        keeper = newKeeper;
+        emit KeeperUpdated(prev, newKeeper);
+    }
+
+    function setFeeBps(uint256 newFeeBps) external onlyOwner {
+        if (newFeeBps > MFX_MAX_FEE_BPS) revert MFX_InvalidFeeBps();
+        uint256 prev = feeBps;
+        feeBps = newFeeBps;
+        emit FeeBpsUpdated(prev, newFeeBps, block.number);
+    }
+
+    function setMinListingWei(uint256 newMin) external onlyOwner {
+        uint256 prev = minListingWei;
+        minListingWei = newMin;
+        emit MinListingWeiUpdated(prev, newMin, block.number);
+    }
+
+    function setMaxListingWei(uint256 newMax) external onlyOwner {
+        uint256 prev = maxListingWei;
+        maxListingWei = newMax;
+        emit MaxListingWeiUpdated(prev, newMax, block.number);
+    }
+
