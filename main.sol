@@ -1738,3 +1738,43 @@ contract MixFinex is ReentrancyGuard, Ownable {
         return (c.stemId, c.inviter, c.invitee, c.shareBps, c.sentAtBlock, c.accepted, c.rejected);
     }
 
+    function getConfigStruct() external view returns (
+        address treasury_,
+        address feeVault_,
+        address exchangeKeeper_,
+        address keeper_,
+        uint256 feeBps_,
+        uint256 minListingWei_,
+        uint256 maxListingWei_,
+        uint256 defaultExpiryBlocks_,
+        uint256 deployedBlock_,
+        bool exchangePaused_
+    ) {
+        return (
+            treasury,
+            feeVault,
+            exchangeKeeper,
+            keeper,
+            feeBps,
+            minListingWei,
+            maxListingWei,
+            defaultExpiryBlocks,
+            deployedBlock,
+            exchangePaused
+        );
+    }
+
+    function getExchangeSalt() external pure returns (uint256) {
+        return MFX_EXCHANGE_SALT;
+    }
+
+    function getDeployedBlockImmutable() external view returns (uint256) {
+        return deployedBlock;
+    }
+
+    function getTotalBidsEverPlaced() external view returns (uint256) {
+        return bidSequence;
+    }
+
+    receive() external payable {}
+}
