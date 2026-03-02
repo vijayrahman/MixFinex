@@ -718,3 +718,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         BidRecord storage b = bids[bidId];
         if (b.bidder == address(0) || b.filled || b.cancelled || block.number >= b.expiryBlock) return false;
         StemListing storage s = stems[b.stemId];
+        return s.lister != address(0) && !s.filled && !s.delisted && block.number < s.expiryBlock;
+    }
+
+    function computeStemId(bytes32 contentHash, address lister, uint256 seq) external pure returns (bytes32) {
+        return _stemId(contentHash, lister, seq);
+    }
+
+    function computeBidId(bytes32 stemId, address bidder, uint256 bidWei, uint256 seq) external pure returns (bytes32) {
+        return _bidId(stemId, bidder, bidWei, seq);
+    }
+
+    function computeCollabId(bytes32 stemId, address inviter, address invitee, uint256 seq) external pure returns (bytes32) {
+        return _collabId(stemId, inviter, invitee, seq);
+    }
+
+    function getBidIdsForStem(bytes32 stemId) external view returns (bytes32[] memory) {
+        return bidIdsForStem[stemId];
+    }
+
+    function keeperBatchDelistExpiredStems(bytes32[] calldata stemIds) external nonReentrant {
+        if (msg.sender != keeper) revert MFX_NotKeeper();
+        if (stemIds.length > MFX_MAX_BATCH_SIZE) revert MFX_BatchTooLarge();
+        for (uint256 i = 0; i < stemIds.length; i++) {
+            StemListing storage s = stems[stemIds[i]];
+            if (s.lister != address(0) && !s.filled && !s.delisted && block.number >= s.expiryBlock) {
+                s.delisted = true;
+                emit StemDelisted(stemIds[i], s.lister, block.number);
+            }
+        }
+    }
+
+    function getStemWithVolume(bytes32 stemId) external view returns (
+        address lister,
+        bytes32 contentHash,
+        uint256 askWei,
+        uint256 listedAtBlock,
+        uint256 expiryBlock,
+        bool filled,
+        bool delisted,
+        uint256 volumeWei
+    ) {
+        StemListing storage s = stems[stemId];
+        return (
+            s.lister,
+            s.contentHash,
+            s.askWei,
+            s.listedAtBlock,
+            s.expiryBlock,
+            s.filled,
+            s.delisted,
+            stemVolumeWei[stemId]
+        );
+    }
+
+    function getBidWithStemInfo(bytes32 bidId) external view returns (
+        bytes32 stemId,
+        address bidder,
+        uint256 bidWei,
+        uint256 placedAtBlock,
+        uint256 expiryBlock,
