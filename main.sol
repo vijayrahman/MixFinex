@@ -1618,3 +1618,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
 
     function getStemFilled(bytes32 stemId) external view returns (bool) {
         return stems[stemId].filled;
+    }
+
+    function getStemDelisted(bytes32 stemId) external view returns (bool) {
+        return stems[stemId].delisted;
+    }
+
+    function getBidFilled(bytes32 bidId) external view returns (bool) {
+        return bids[bidId].filled;
+    }
+
+    function getBidCancelled(bytes32 bidId) external view returns (bool) {
+        return bids[bidId].cancelled;
+    }
+
+    function getMinExpiryBlocks() external pure returns (uint256) {
+        return MFX_MIN_EXPIRY_BLOCKS;
+    }
+
+    function getMaxExpiryBlocks() external pure returns (uint256) {
+        return MFX_MAX_EXPIRY_BLOCKS;
+    }
+
+    function getBpsDenom() external pure returns (uint256) {
+        return MFX_BPS_DENOM;
+    }
+
+    function getMaxFeeBps() external pure returns (uint256) {
+        return MFX_MAX_FEE_BPS;
+    }
+
+    function getMaxListingsPerUser() external pure returns (uint256) {
+        return MFX_MAX_LISTINGS_PER_USER;
+    }
+
+    function getMaxBidsPerUser() external pure returns (uint256) {
+        return MFX_MAX_BIDS_PER_USER;
+    }
+
+    function getMaxBatchSize() external pure returns (uint256) {
+        return MFX_MAX_BATCH_SIZE;
+    }
+
+    function canListerDelist(bytes32 stemId, address account) external view returns (bool) {
+        StemListing storage s = stems[stemId];
+        return s.lister == account && !s.filled && !s.delisted;
+    }
+
+    function canBidderCancel(bytes32 bidId, address account) external view returns (bool) {
+        BidRecord storage b = bids[bidId];
+        return b.bidder == account && !b.filled && !b.cancelled;
+    }
+
+    function canBuyerFillStem(bytes32 stemId, uint256 sentWei) external view returns (bool) {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0) || s.filled || s.delisted || block.number >= s.expiryBlock) return false;
+        return sentWei == s.askWei;
+    }
+
+    function canSellerFillBid(bytes32 bidId, address seller) external view returns (bool) {
+        BidRecord storage b = bids[bidId];
