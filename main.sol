@@ -538,3 +538,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         collabSequence++;
         collabId = _collabId(stemId, msg.sender, invitee, collabSequence);
         if (collabs[collabId].inviter != address(0)) revert MFX_CollabNotFound();
+
+        collabs[collabId] = CollabInvite({
+            stemId: stemId,
+            inviter: msg.sender,
+            invitee: invitee,
+            shareBps: shareBps,
+            sentAtBlock: block.number,
+            accepted: false,
+            rejected: false
+        });
+        collabInvitesSent[msg.sender]++;
+        collabInvitesReceived[invitee]++;
+        emit CollabInviteSent(collabId, stemId, msg.sender, invitee, shareBps, block.number);
+        return collabId;
+    }
+
+    function acceptCollab(bytes32 collabId) external whenNotPaused {
+        CollabInvite storage c = collabs[collabId];
+        if (c.invitee != msg.sender) revert MFX_NotInvitee();
+        if (c.accepted || c.rejected) revert MFX_CollabAlreadyResponded();
+        c.accepted = true;
+        collabParticipants[c.stemId].push(msg.sender);
+        emit CollabAccepted(collabId, msg.sender, block.number);
+    }
+
+    function rejectCollab(bytes32 collabId) external whenNotPaused {
+        CollabInvite storage c = collabs[collabId];
+        if (c.invitee != msg.sender) revert MFX_NotInvitee();
+        if (c.accepted || c.rejected) revert MFX_CollabAlreadyResponded();
+        c.rejected = true;
+        emit CollabRejected(collabId, msg.sender, block.number);
+    }
+
+    function distributeRoyalty(bytes32 stemId, address[] calldata recipients, uint256[] calldata amountsWei) external whenNotPaused nonReentrant {
+        if (recipients.length != amountsWei.length) revert MFX_ArrayLengthMismatch();
+        StemListing storage s = stems[stemId];
+        if (s.lister != msg.sender) revert MFX_NotLister();
+        uint256 total = 0;
+        for (uint256 i = 0; i < amountsWei.length; i++) {
+            total += amountsWei[i];
+        }
+        if (address(this).balance < total) revert MFX_InsufficientValue();
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (recipients[i] == address(0)) revert MFX_ZeroAddress();
+            if (amountsWei[i] == 0) continue;
+            totalRoyaltyPaid[stemId] += amountsWei[i];
+            (bool sent,) = recipients[i].call{value: amountsWei[i]}("");
+            if (!sent) revert MFX_TransferFailed();
+            emit RoyaltySplit(stemId, recipients[i], amountsWei[i], MFX_SPLIT_ROYALTY, block.number);
+        }
+    }
+
+    function sweepTreasuryFees() external nonReentrant {
+        if (msg.sender != treasury) revert MFX_NotKeeper();
+        uint256 amount = _feeTreasuryAccum;
+        if (amount == 0) revert MFX_ZeroAmount();
+        _feeTreasuryAccum = 0;
+        (bool sent,) = treasury.call{value: amount}("");
+        if (!sent) revert MFX_TransferFailed();
+        emit FeeSwept(treasury, amount, MFX_VAULT_TREASURY, block.number);
