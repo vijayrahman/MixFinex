@@ -1678,3 +1678,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
 
     function canSellerFillBid(bytes32 bidId, address seller) external view returns (bool) {
         BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0) || b.filled || b.cancelled || block.number >= b.expiryBlock) return false;
+        StemListing storage s = stems[b.stemId];
+        return s.lister == seller && !s.filled && !s.delisted && block.number < s.expiryBlock;
+    }
+
+    function getStemIdsByListerLength(address lister) external view returns (uint256) {
+        return stemIdsByLister[lister].length;
+    }
+
+    function getBidIdsByBidderLength(address bidder) external view returns (uint256) {
+        return bidIdsByBidder[bidder].length;
+    }
+
+    function getBidIdsForStemLength(bytes32 stemId) external view returns (uint256) {
+        return bidIdsForStem[stemId].length;
+    }
+
+    function getCollabParticipantsLength(bytes32 stemId) external view returns (uint256) {
+        return collabParticipants[stemId].length;
+    }
+
+    function getStemListingStruct(bytes32 stemId) external view returns (
+        address lister_,
+        bytes32 contentHash_,
+        uint256 askWei_,
+        uint256 listedAtBlock_,
+        uint256 expiryBlock_,
+        bool filled_,
+        bool delisted_
+    ) {
+        StemListing storage s = stems[stemId];
+        return (s.lister, s.contentHash, s.askWei, s.listedAtBlock, s.expiryBlock, s.filled, s.delisted);
+    }
+
+    function getBidStruct(bytes32 bidId) external view returns (
+        bytes32 stemId_,
+        address bidder_,
+        uint256 bidWei_,
+        uint256 placedAtBlock_,
+        uint256 expiryBlock_,
+        bool filled_,
+        bool cancelled_
+    ) {
+        BidRecord storage b = bids[bidId];
+        return (b.stemId, b.bidder, b.bidWei, b.placedAtBlock, b.expiryBlock, b.filled, b.cancelled);
+    }
+
+    function getCollabStruct(bytes32 collabId) external view returns (
+        bytes32 stemId_,
+        address inviter_,
+        address invitee_,
+        uint256 shareBps_,
+        uint256 sentAtBlock_,
+        bool accepted_,
+        bool rejected_
+    ) {
+        CollabInvite storage c = collabs[collabId];
+        return (c.stemId, c.inviter, c.invitee, c.shareBps, c.sentAtBlock, c.accepted, c.rejected);
+    }
+
