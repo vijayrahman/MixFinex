@@ -1558,3 +1558,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
 
     function isCollabRejected(bytes32 collabId) external view returns (bool) {
         return collabs[collabId].rejected;
+    }
+
+    function getCollabShareBps(bytes32 collabId) external view returns (uint256) {
+        return collabs[collabId].shareBps;
+    }
+
+    function getCollabInviter(bytes32 collabId) external view returns (address) {
+        return collabs[collabId].inviter;
+    }
+
+    function getCollabInvitee(bytes32 collabId) external view returns (address) {
+        return collabs[collabId].invitee;
+    }
+
+    function getCollabStemId(bytes32 collabId) external view returns (bytes32) {
+        return collabs[collabId].stemId;
+    }
+
+    function getStemVolume(bytes32 stemId) external view returns (uint256) {
+        return stemVolumeWei[stemId];
+    }
+
+    function getListerVolume(address lister) external view returns (uint256) {
+        return listerVolumeWei[lister];
+    }
+
+    function getBidderVolume(address bidder) external view returns (uint256) {
+        return bidderVolumeWei[bidder];
+    }
+
+    function getTotalVolume() external view returns (uint256) {
+        return totalVolumeWei;
+    }
+
+    function getTotalFees() external view returns (uint256) {
+        return totalFeesWei;
+    }
+
+    function getTreasuryAccum() external view returns (uint256) {
+        return _feeTreasuryAccum;
+    }
+
+    function getVaultAccum() external view returns (uint256) {
+        return _feeVaultAccum;
+    }
+
+    function getRoyaltyPaidForStem(bytes32 stemId) external view returns (uint256) {
+        return totalRoyaltyPaid[stemId];
+    }
+
+    function getCollabParticipantsCount(bytes32 stemId) external view returns (uint256) {
+        return collabParticipants[stemId].length;
+    }
+
+    function getBidCountForStem(bytes32 stemId) external view returns (uint256) {
+        return bidIdsForStem[stemId].length;
+    }
+
+    function getStemFilled(bytes32 stemId) external view returns (bool) {
+        return stems[stemId].filled;
