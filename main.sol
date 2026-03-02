@@ -1078,3 +1078,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         if (s.filled || s.delisted) return false;
         if (block.number >= s.expiryBlock) return false;
         if (bidWei < minListingWei) return false;
+        if (bidWei > maxListingWei) return false;
+        if (bidIdsByBidder[msg.sender].length >= MFX_MAX_BIDS_PER_USER) return false;
+        return true;
+    }
+
+    function estimateListerReceive(uint256 askWei) external view returns (uint256 netWei, uint256 feeWei) {
+        feeWei = (askWei * feeBps) / MFX_BPS_DENOM;
+        netWei = askWei - feeWei;
+    }
+
+    function estimateBidderReceive(uint256 bidWei) external view returns (uint256 netWei, uint256 feeWei) {
+        feeWei = (bidWei * feeBps) / MFX_BPS_DENOM;
+        netWei = bidWei - feeWei;
+    }
+
+    function getConstants() external pure returns (
+        uint256 bpsDenom,
+        uint256 maxFeeBps,
+        uint256 maxListingsPerUser,
+        uint256 maxBidsPerUser,
+        uint256 maxBatchSize,
+        uint256 minExpiryBlocks,
+        uint256 maxExpiryBlocks
+    ) {
+        return (
+            MFX_BPS_DENOM,
+            MFX_MAX_FEE_BPS,
+            MFX_MAX_LISTINGS_PER_USER,
+            MFX_MAX_BIDS_PER_USER,
+            MFX_MAX_BATCH_SIZE,
+            MFX_MIN_EXPIRY_BLOCKS,
+            MFX_MAX_EXPIRY_BLOCKS
+        );
+    }
+
+    function getFullStemInfo(bytes32 stemId) external view returns (
+        address lister,
+        bytes32 contentHash,
+        uint256 askWei,
+        uint256 listedAtBlock,
+        uint256 expiryBlock,
+        bool filled,
+        bool delisted,
+        uint256 volumeWei,
+        uint256 royaltyPaid,
+        uint256 bidCount,
+        uint256 collabParticipantCount
+    ) {
+        StemListing storage s = stems[stemId];
+        return (
+            s.lister,
+            s.contentHash,
+            s.askWei,
+            s.listedAtBlock,
+            s.expiryBlock,
+            s.filled,
+            s.delisted,
+            stemVolumeWei[stemId],
+            totalRoyaltyPaid[stemId],
+            bidIdsForStem[stemId].length,
