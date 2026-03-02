@@ -658,3 +658,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         CollabInvite storage c = collabs[collabId];
         return (c.stemId, c.inviter, c.invitee, c.shareBps, c.sentAtBlock, c.accepted, c.rejected);
     }
+
+    function getStemIdsByLister(address lister) external view returns (bytes32[] memory) {
+        return stemIdsByLister[lister];
+    }
+
+    function getBidIdsByBidder(address bidder) external view returns (bytes32[] memory) {
+        return bidIdsByBidder[bidder];
+    }
+
+    function getCollabParticipants(bytes32 stemId) external view returns (address[] memory) {
+        return collabParticipants[stemId];
+    }
+
+    function getFeeTreasuryAccum() external view returns (uint256) {
+        return _feeTreasuryAccum;
+    }
+
+    function getFeeVaultAccum() external view returns (uint256) {
+        return _feeVaultAccum;
+    }
+
+    function getTotalRoyaltyPaid(bytes32 stemId) external view returns (uint256) {
+        return totalRoyaltyPaid[stemId];
+    }
+
+    function getConfig() external view returns (
+        address _treasury,
+        address _feeVault,
+        address _exchangeKeeper,
+        address _keeper,
+        uint256 _feeBps,
+        uint256 _minListingWei,
+        uint256 _maxListingWei,
+        uint256 _defaultExpiryBlocks,
+        uint256 _deployedBlock,
+        bool _exchangePaused
+    ) {
+        return (
+            treasury,
+            feeVault,
+            exchangeKeeper,
+            keeper,
+            feeBps,
+            minListingWei,
+            maxListingWei,
+            defaultExpiryBlocks,
+            deployedBlock,
+            exchangePaused
+        );
+    }
+
+    function canFillStem(bytes32 stemId) external view returns (bool) {
+        StemListing storage s = stems[stemId];
+        return s.lister != address(0) && !s.filled && !s.delisted && block.number < s.expiryBlock;
+    }
+
+    function canFillBid(bytes32 bidId) external view returns (bool) {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0) || b.filled || b.cancelled || block.number >= b.expiryBlock) return false;
+        StemListing storage s = stems[b.stemId];
