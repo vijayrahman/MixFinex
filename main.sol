@@ -1378,3 +1378,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
     function getCollabSequence() external view returns (uint256) {
         return collabSequence;
     }
+
+    function hasStemExpired(bytes32 stemId) external view returns (bool) {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0)) return true;
+        return block.number >= s.expiryBlock;
+    }
+
+    function hasBidExpired(bytes32 bidId) external view returns (bool) {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0)) return true;
+        return block.number >= b.expiryBlock;
+    }
+
+    function getStemStatus(bytes32 stemId) external view returns (uint8 status) {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0)) return 0;
+        if (s.filled) return 1;
+        if (s.delisted) return 2;
+        if (block.number >= s.expiryBlock) return 3;
+        return 4;
+    }
+
+    function getBidStatus(bytes32 bidId) external view returns (uint8 status) {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0)) return 0;
+        if (b.filled) return 1;
+        if (b.cancelled) return 2;
+        if (block.number >= b.expiryBlock) return 3;
+        return 4;
+    }
+
+    function getStemIdsForListerRange(address lister, uint256 fromIdx, uint256 toIdx) external view returns (bytes32[] memory out) {
+        bytes32[] storage all = stemIdsByLister[lister];
+        if (toIdx > all.length) toIdx = all.length;
+        if (fromIdx >= toIdx) return new bytes32[](0);
+        uint256 n = toIdx - fromIdx;
+        out = new bytes32[](n);
+        for (uint256 i = 0; i < n; i++) {
+            out[i] = all[fromIdx + i];
+        }
+    }
+
+    function getBidIdsForBidderRange(address bidder, uint256 fromIdx, uint256 toIdx) external view returns (bytes32[] memory out) {
+        bytes32[] storage all = bidIdsByBidder[bidder];
+        if (toIdx > all.length) toIdx = all.length;
+        if (fromIdx >= toIdx) return new bytes32[](0);
+        uint256 n = toIdx - fromIdx;
+        out = new bytes32[](n);
+        for (uint256 i = 0; i < n; i++) {
+            out[i] = all[fromIdx + i];
+        }
+    }
+
+    function getBidIdsForStemRange(bytes32 stemId, uint256 fromIdx, uint256 toIdx) external view returns (bytes32[] memory out) {
+        bytes32[] storage all = bidIdsForStem[stemId];
+        if (toIdx > all.length) toIdx = all.length;
+        if (fromIdx >= toIdx) return new bytes32[](0);
+        uint256 n = toIdx - fromIdx;
+        out = new bytes32[](n);
+        for (uint256 i = 0; i < n; i++) {
