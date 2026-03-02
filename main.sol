@@ -1018,3 +1018,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
 
     function getBidCountForBidder(address bidder) external view returns (uint256) {
         return bidIdsByBidder[bidder].length;
+    }
+
+    function getListerStemAt(address lister, uint256 index) external view returns (bytes32) {
+        return stemIdsByLister[lister][index];
+    }
+
+    function getContractBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    function getDomainHash() external view returns (bytes32) {
+        return exchangeDomain;
+    }
+
+    function isStemActive(bytes32 stemId) external view returns (bool) {
+        StemListing storage s = stems[stemId];
+        return s.lister != address(0) && !s.filled && !s.delisted && block.number < s.expiryBlock;
+    }
+
+    function isBidActive(bytes32 bidId) external view returns (bool) {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0) || b.filled || b.cancelled || block.number >= b.expiryBlock) return false;
+        StemListing storage s = stems[b.stemId];
+        return s.lister != address(0) && !s.filled && !s.delisted && block.number < s.expiryBlock;
+    }
+
+    function getCollabCountForStem(bytes32 stemId) external view returns (uint256) {
+        return collabParticipants[stemId].length;
+    }
+
+    function getCollabParticipantAt(bytes32 stemId, uint256 index) external view returns (address) {
+        return collabParticipants[stemId][index];
+    }
+
+    function getNextStemSequence() external view returns (uint256) {
+        return stemSequence + 1;
+    }
+
+    function getNextBidSequence() external view returns (uint256) {
+        return bidSequence + 1;
+    }
+
+    function getNextCollabSequence() external view returns (uint256) {
+        return collabSequence + 1;
+    }
+
+    function validateStemListingParams(bytes32 contentHash, uint256 askWei) external view returns (bool ok) {
+        if (contentHash == bytes32(0)) return false;
+        if (askWei < minListingWei) return false;
+        if (askWei > maxListingWei) return false;
+        if (stemIdsByLister[msg.sender].length >= MFX_MAX_LISTINGS_PER_USER) return false;
+        return true;
+    }
+
+    function validateBidParams(bytes32 stemId, uint256 bidWei) external view returns (bool ok) {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0)) return false;
+        if (s.filled || s.delisted) return false;
+        if (block.number >= s.expiryBlock) return false;
+        if (bidWei < minListingWei) return false;
