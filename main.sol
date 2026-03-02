@@ -1198,3 +1198,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         );
     }
 
+    function getListerVolumeRank(address[] calldata listers) external view returns (uint256[] memory volumes, uint256[] memory ranks) {
+        uint256 n = listers.length;
+        volumes = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            volumes[i] = listerVolumeWei[listers[i]];
+        }
+        ranks = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 r = 1;
+            for (uint256 j = 0; j < n; j++) {
+                if (listerVolumeWei[listers[j]] > volumes[i]) r++;
+            }
+            ranks[i] = r;
+        }
+    }
+
+    function getBidderVolumeRank(address[] calldata bidders) external view returns (uint256[] memory volumes, uint256[] memory ranks) {
+        uint256 n = bidders.length;
+        volumes = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            volumes[i] = bidderVolumeWei[bidders[i]];
+        }
+        ranks = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 r = 1;
+            for (uint256 j = 0; j < n; j++) {
+                if (bidderVolumeWei[bidders[j]] > volumes[i]) r++;
+            }
+            ranks[i] = r;
+        }
+    }
+
+    function getStemsByListerPaginated(address lister, uint256 offset, uint256 limit) external view returns (
+        bytes32[] memory stemIdsOut,
+        uint256 totalCount
+    ) {
+        bytes32[] storage all = stemIdsByLister[lister];
+        totalCount = all.length;
+        if (offset >= totalCount) {
+            stemIdsOut = new bytes32[](0);
+            return (stemIdsOut, totalCount);
+        }
+        uint256 end = offset + limit;
+        if (end > totalCount) end = totalCount;
+        uint256 resultLen = end - offset;
+        stemIdsOut = new bytes32[](resultLen);
+        for (uint256 i = 0; i < resultLen; i++) {
+            stemIdsOut[i] = all[offset + i];
+        }
+    }
+
+    function getBidsByBidderPaginated(address bidder, uint256 offset, uint256 limit) external view returns (
+        bytes32[] memory bidIdsOut,
+        uint256 totalCount
+    ) {
+        bytes32[] storage all = bidIdsByBidder[bidder];
+        totalCount = all.length;
+        if (offset >= totalCount) {
+            bidIdsOut = new bytes32[](0);
+            return (bidIdsOut, totalCount);
