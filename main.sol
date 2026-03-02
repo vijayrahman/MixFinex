@@ -1498,3 +1498,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         return c;
     }
 
+    function getSalt() external pure returns (uint256) {
+        return MFX_EXCHANGE_SALT;
+    }
+
+    function getDomainName() external pure returns (bytes32) {
+        return keccak256("MixFinex");
+    }
+
+    function getVaultKindTreasury() external pure returns (uint8) {
+        return MFX_VAULT_TREASURY;
+    }
+
+    function getVaultKindFee() external pure returns (uint8) {
+        return MFX_VAULT_FEE;
+    }
+
+    function getSplitKindCollab() external pure returns (uint8) {
+        return MFX_SPLIT_COLLAB;
+    }
+
+    function getSplitKindRoyalty() external pure returns (uint8) {
+        return MFX_SPLIT_ROYALTY;
+    }
+
+    function getExchangeDomainPacked() external view returns (bytes32) {
+        return keccak256(abi.encodePacked("MixFinex_", block.chainid, block.prevrandao, MFX_EXCHANGE_SALT));
+    }
+
+    function _requireStemActive(bytes32 stemId) internal view {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0)) revert MFX_StemNotFound();
+        if (s.filled || s.delisted) revert MFX_AlreadyFilled();
+        if (block.number >= s.expiryBlock) revert MFX_ListingExpired();
+    }
+
+    function _requireBidActive(bytes32 bidId) internal view {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0)) revert MFX_BidNotFound();
+        if (b.filled || b.cancelled) revert MFX_AlreadyFilled();
+        if (block.number >= b.expiryBlock) revert MFX_BidExpired();
+    }
+
+    function getStemListedBlock(bytes32 stemId) external view returns (uint256) {
+        return stems[stemId].listedAtBlock;
+    }
+
+    function getBidPlacedBlock(bytes32 bidId) external view returns (uint256) {
+        return bids[bidId].placedAtBlock;
+    }
+
+    function getCollabSentBlock(bytes32 collabId) external view returns (uint256) {
+        return collabs[collabId].sentAtBlock;
+    }
+
+    function isCollabAccepted(bytes32 collabId) external view returns (bool) {
+        return collabs[collabId].accepted;
+    }
+
+    function isCollabRejected(bytes32 collabId) external view returns (bool) {
+        return collabs[collabId].rejected;
