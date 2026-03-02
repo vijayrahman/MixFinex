@@ -958,3 +958,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         for (uint256 i = 0; i < all.length; i++) {
             StemListing storage s = stems[all[i]];
             if (!s.filled && !s.delisted && block.number >= s.expiryBlock) count++;
+        }
+        bytes32[] memory out = new bytes32[](count);
+        count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            StemListing storage s = stems[all[i]];
+            if (!s.filled && !s.delisted && block.number >= s.expiryBlock) out[count++] = all[i];
+        }
+        return out;
+    }
+
+    function getExpiredBidIdsForBidder(address bidder) external view returns (bytes32[] memory) {
+        bytes32[] storage all = bidIdsByBidder[bidder];
+        uint256 count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number >= b.expiryBlock) count++;
+        }
+        bytes32[] memory out = new bytes32[](count);
+        count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number >= b.expiryBlock) out[count++] = all[i];
+        }
+        return out;
+    }
+
+    function getActiveBidIdsForStem(bytes32 stemId) external view returns (bytes32[] memory) {
+        bytes32[] storage all = bidIdsForStem[stemId];
+        uint256 count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number < b.expiryBlock) count++;
+        }
+        bytes32[] memory out = new bytes32[](count);
+        count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number < b.expiryBlock) out[count++] = all[i];
+        }
+        return out;
+    }
+
+    function getHighestBidForStem(bytes32 stemId) external view returns (bytes32 bidId, uint256 bidWei) {
+        bytes32[] storage all = bidIdsForStem[stemId];
+        bidWei = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number < b.expiryBlock && b.bidWei > bidWei) {
+                bidWei = b.bidWei;
+                bidId = all[i];
+            }
+        }
+    }
+
+    function getStemCountForLister(address lister) external view returns (uint256) {
+        return stemIdsByLister[lister].length;
+    }
+
+    function getBidCountForBidder(address bidder) external view returns (uint256) {
+        return bidIdsByBidder[bidder].length;
