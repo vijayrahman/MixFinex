@@ -778,3 +778,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         uint256 bidWei,
         uint256 placedAtBlock,
         uint256 expiryBlock,
+        bool filled,
+        bool cancelled,
+        address stemLister,
+        uint256 stemAskWei
+    ) {
+        BidRecord storage b = bids[bidId];
+        StemListing storage s = stems[b.stemId];
+        return (
+            b.stemId,
+            b.bidder,
+            b.bidWei,
+            b.placedAtBlock,
+            b.expiryBlock,
+            b.filled,
+            b.cancelled,
+            s.lister,
+            s.askWei
+        );
+    }
+
+    function getListerStats(address lister) external view returns (
+        uint256 listingCount,
+        uint256 totalVolumeWei,
+        uint256 collabInvitesSentCount
+    ) {
+        return (
+            stemIdsByLister[lister].length,
+            listerVolumeWei[lister],
+            collabInvitesSent[lister]
+        );
+    }
+
+    function getBidderStats(address bidder) external view returns (
+        uint256 bidCount,
+        uint256 totalVolumeWei,
+        uint256 collabInvitesReceivedCount
+    ) {
+        return (
+            bidIdsByBidder[bidder].length,
+            bidderVolumeWei[bidder],
+            collabInvitesReceived[bidder]
+        );
+    }
+
+    function getExchangeStats() external view returns (
+        uint256 totalStemsListed,
+        uint256 totalBidsPlaced,
+        uint256 totalVolume,
+        uint256 totalFees,
+        uint256 treasuryAccum,
+        uint256 vaultAccum
+    ) {
+        return (
+            stemSequence,
+            bidSequence,
+            totalVolumeWei,
+            totalFeesWei,
+            _feeTreasuryAccum,
+            _feeVaultAccum
+        );
