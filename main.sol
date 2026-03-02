@@ -1138,3 +1138,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
             stemVolumeWei[stemId],
             totalRoyaltyPaid[stemId],
             bidIdsForStem[stemId].length,
+            collabParticipants[stemId].length
+        );
+    }
+
+    function getFullBidInfo(bytes32 bidId) external view returns (
+        bytes32 stemId,
+        address bidder,
+        uint256 bidWei,
+        uint256 placedAtBlock,
+        uint256 expiryBlock,
+        bool filled,
+        bool cancelled,
+        address stemLister,
+        uint256 stemAskWei,
+        bool stemFilled,
+        bool stemDelisted
+    ) {
+        BidRecord storage b = bids[bidId];
+        StemListing storage s = stems[b.stemId];
+        return (
+            b.stemId,
+            b.bidder,
+            b.bidWei,
+            b.placedAtBlock,
+            b.expiryBlock,
+            b.filled,
+            b.cancelled,
+            s.lister,
+            s.askWei,
+            s.filled,
+            s.delisted
+        );
+    }
+
+    function getFullCollabInfo(bytes32 collabId) external view returns (
+        bytes32 stemId,
+        address inviter,
+        address invitee,
+        uint256 shareBps,
+        uint256 sentAtBlock,
+        bool accepted,
+        bool rejected,
+        address stemLister,
+        uint256 stemAskWei
+    ) {
+        CollabInvite storage c = collabs[collabId];
+        StemListing storage s = stems[c.stemId];
+        return (
+            c.stemId,
+            c.inviter,
+            c.invitee,
+            c.shareBps,
+            c.sentAtBlock,
+            c.accepted,
+            c.rejected,
+            s.lister,
+            s.askWei
+        );
+    }
+
