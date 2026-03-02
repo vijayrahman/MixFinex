@@ -1318,3 +1318,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
     function getBidBidder(bytes32 bidId) external view returns (address) {
         return bids[bidId].bidder;
     }
+
+    function getBidWei(bytes32 bidId) external view returns (uint256) {
+        return bids[bidId].bidWei;
+    }
+
+    function getBidExpiryBlock(bytes32 bidId) external view returns (uint256) {
+        return bids[bidId].expiryBlock;
+    }
+
+    function getTreasuryAddress() external view returns (address) {
+        return treasury;
+    }
+
+    function getFeeVaultAddress() external view returns (address) {
+        return feeVault;
+    }
+
+    function getExchangeKeeperAddress() external view returns (address) {
+        return exchangeKeeper;
+    }
+
+    function getKeeperAddress() external view returns (address) {
+        return keeper;
+    }
+
+    function getCurrentBlock() external view returns (uint256) {
+        return block.number;
+    }
+
+    function getFeeBps() external view returns (uint256) {
+        return feeBps;
+    }
+
+    function getMinListingWei() external view returns (uint256) {
+        return minListingWei;
+    }
+
+    function getMaxListingWei() external view returns (uint256) {
+        return maxListingWei;
+    }
+
+    function getDefaultExpiryBlocks() external view returns (uint256) {
+        return defaultExpiryBlocks;
+    }
+
+    function isExchangePaused() external view returns (bool) {
+        return exchangePaused;
+    }
+
+    function getStemSequence() external view returns (uint256) {
+        return stemSequence;
+    }
+
+    function getBidSequence() external view returns (uint256) {
+        return bidSequence;
+    }
+
+    function getCollabSequence() external view returns (uint256) {
+        return collabSequence;
+    }
