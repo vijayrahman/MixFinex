@@ -838,3 +838,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
             _feeTreasuryAccum,
             _feeVaultAccum
         );
+    }
+
+    function blocksUntilStemExpiry(bytes32 stemId) external view returns (uint256) {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0) || s.filled || s.delisted) return 0;
+        if (block.number >= s.expiryBlock) return 0;
+        return s.expiryBlock - block.number;
+    }
+
+    function blocksUntilBidExpiry(bytes32 bidId) external view returns (uint256) {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0) || b.filled || b.cancelled) return 0;
+        if (block.number >= b.expiryBlock) return 0;
+        return b.expiryBlock - block.number;
+    }
+
+    function getFeeForAmount(uint256 amountWei) external view returns (uint256) {
+        return (amountWei * feeBps) / MFX_BPS_DENOM;
+    }
+
+    function getNetAfterFee(uint256 amountWei) external view returns (uint256) {
+        return amountWei - (amountWei * feeBps) / MFX_BPS_DENOM;
+    }
+
+    function getMultipleStems(bytes32[] calldata stemIds) external view returns (
+        address[] memory listers,
+        bytes32[] memory contentHashes,
+        uint256[] memory askWeis,
+        uint256[] memory listedAtBlocks,
+        uint256[] memory expiryBlocks,
+        bool[] memory filleds,
+        bool[] memory delisteds
+    ) {
+        uint256 n = stemIds.length;
+        listers = new address[](n);
+        contentHashes = new bytes32[](n);
+        askWeis = new uint256[](n);
+        listedAtBlocks = new uint256[](n);
+        expiryBlocks = new uint256[](n);
+        filleds = new bool[](n);
+        delisteds = new bool[](n);
+        for (uint256 i = 0; i < n; i++) {
+            StemListing storage s = stems[stemIds[i]];
+            listers[i] = s.lister;
+            contentHashes[i] = s.contentHash;
+            askWeis[i] = s.askWei;
+            listedAtBlocks[i] = s.listedAtBlock;
+            expiryBlocks[i] = s.expiryBlock;
+            filleds[i] = s.filled;
+            delisteds[i] = s.delisted;
+        }
+    }
+
+    function getMultipleBids(bytes32[] calldata bidIds) external view returns (
+        bytes32[] memory stemIdsOut,
+        address[] memory bidders,
+        uint256[] memory bidWeis,
+        uint256[] memory placedAtBlocks,
+        uint256[] memory expiryBlocks,
+        bool[] memory filleds,
