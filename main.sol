@@ -1258,3 +1258,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         if (offset >= totalCount) {
             bidIdsOut = new bytes32[](0);
             return (bidIdsOut, totalCount);
+        }
+        uint256 end = offset + limit;
+        if (end > totalCount) end = totalCount;
+        uint256 resultLen = end - offset;
+        bidIdsOut = new bytes32[](resultLen);
+        for (uint256 i = 0; i < resultLen; i++) {
+            bidIdsOut[i] = all[offset + i];
+        }
+    }
+
+    function getBidsByStemPaginated(bytes32 stemId, uint256 offset, uint256 limit) external view returns (
+        bytes32[] memory bidIdsOut,
+        uint256 totalCount
+    ) {
+        bytes32[] storage all = bidIdsForStem[stemId];
+        totalCount = all.length;
+        if (offset >= totalCount) {
+            bidIdsOut = new bytes32[](0);
+            return (bidIdsOut, totalCount);
+        }
+        uint256 end = offset + limit;
+        if (end > totalCount) end = totalCount;
+        uint256 resultLen = end - offset;
+        bidIdsOut = new bytes32[](resultLen);
+        for (uint256 i = 0; i < resultLen; i++) {
+            bidIdsOut[i] = all[offset + i];
+        }
+    }
+
+    function getDeployedBlock() external view returns (uint256) {
+        return deployedBlock;
+    }
+
+    function getChainId() external view returns (uint256) {
+        return block.chainid;
+    }
+
+    function getStemAskWei(bytes32 stemId) external view returns (uint256) {
+        return stems[stemId].askWei;
+    }
+
+    function getStemLister(bytes32 stemId) external view returns (address) {
+        return stems[stemId].lister;
+    }
+
+    function getStemContentHash(bytes32 stemId) external view returns (bytes32) {
+        return stems[stemId].contentHash;
+    }
+
+    function getStemExpiryBlock(bytes32 stemId) external view returns (uint256) {
+        return stems[stemId].expiryBlock;
+    }
+
+    function getBidStemId(bytes32 bidId) external view returns (bytes32) {
+        return bids[bidId].stemId;
+    }
+
+    function getBidBidder(bytes32 bidId) external view returns (address) {
+        return bids[bidId].bidder;
+    }
