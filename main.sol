@@ -898,3 +898,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
         uint256[] memory placedAtBlocks,
         uint256[] memory expiryBlocks,
         bool[] memory filleds,
+        bool[] memory cancelleds
+    ) {
+        uint256 n = bidIds.length;
+        stemIdsOut = new bytes32[](n);
+        bidders = new address[](n);
+        bidWeis = new uint256[](n);
+        placedAtBlocks = new uint256[](n);
+        expiryBlocks = new uint256[](n);
+        filleds = new bool[](n);
+        cancelleds = new bool[](n);
+        for (uint256 i = 0; i < n; i++) {
+            BidRecord storage b = bids[bidIds[i]];
+            stemIdsOut[i] = b.stemId;
+            bidders[i] = b.bidder;
+            bidWeis[i] = b.bidWei;
+            placedAtBlocks[i] = b.placedAtBlock;
+            expiryBlocks[i] = b.expiryBlock;
+            filleds[i] = b.filled;
+            cancelleds[i] = b.cancelled;
+        }
+    }
+
+    function getActiveStemIdsForLister(address lister) external view returns (bytes32[] memory) {
+        bytes32[] storage all = stemIdsByLister[lister];
+        uint256 count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            StemListing storage s = stems[all[i]];
+            if (!s.filled && !s.delisted && block.number < s.expiryBlock) count++;
+        }
+        bytes32[] memory out = new bytes32[](count);
+        count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            StemListing storage s = stems[all[i]];
+            if (!s.filled && !s.delisted && block.number < s.expiryBlock) out[count++] = all[i];
+        }
+        return out;
+    }
+
+    function getActiveBidIdsForBidder(address bidder) external view returns (bytes32[] memory) {
+        bytes32[] storage all = bidIdsByBidder[bidder];
+        uint256 count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number < b.expiryBlock) count++;
+        }
+        bytes32[] memory out = new bytes32[](count);
+        count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            BidRecord storage b = bids[all[i]];
+            if (!b.filled && !b.cancelled && block.number < b.expiryBlock) out[count++] = all[i];
+        }
+        return out;
+    }
+
+    function getExpiredStemIdsForLister(address lister) external view returns (bytes32[] memory) {
+        bytes32[] storage all = stemIdsByLister[lister];
+        uint256 count = 0;
+        for (uint256 i = 0; i < all.length; i++) {
+            StemListing storage s = stems[all[i]];
+            if (!s.filled && !s.delisted && block.number >= s.expiryBlock) count++;
