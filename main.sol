@@ -478,3 +478,63 @@ contract MixFinex is ReentrancyGuard, Ownable {
     }
 
     function fillStemOffer(bytes32 stemId) external payable whenNotPaused nonReentrant {
+        StemListing storage s = stems[stemId];
+        if (s.lister == address(0)) revert MFX_StemNotFound();
+        if (s.filled || s.delisted) revert MFX_AlreadyFilled();
+        if (block.number >= s.expiryBlock) revert MFX_ListingExpired();
+        if (msg.value != s.askWei) revert MFX_AskMismatch();
+
+        uint256 feeWei = (msg.value * feeBps) / MFX_BPS_DENOM;
+        uint256 halfFee = feeWei / 2;
+        _feeTreasuryAccum += halfFee;
+        _feeVaultAccum += (feeWei - halfFee);
+        uint256 toLister = msg.value - feeWei;
+
+        s.filled = true;
+        stemVolumeWei[stemId] += msg.value;
+        listerVolumeWei[s.lister] += toLister;
+        totalVolumeWei += msg.value;
+        totalFeesWei += feeWei;
+        (bool toListerOk,) = s.lister.call{value: toLister}("");
+        if (!toListerOk) revert MFX_TransferFailed();
+        emit OfferFilled(stemId, msg.sender, s.lister, msg.value, feeWei, block.number);
+    }
+
+    function fillBid(bytes32 bidId) external payable whenNotPaused nonReentrant {
+        BidRecord storage b = bids[bidId];
+        if (b.bidder == address(0)) revert MFX_BidNotFound();
+        if (b.filled || b.cancelled) revert MFX_AlreadyFilled();
+        if (block.number >= b.expiryBlock) revert MFX_BidExpired();
+        StemListing storage s = stems[b.stemId];
+        if (s.lister != msg.sender) revert MFX_NotLister();
+        if (s.filled || s.delisted) revert MFX_StemNotFound();
+        if (block.number >= s.expiryBlock) revert MFX_ListingExpired();
+
+        uint256 feeWei = (b.bidWei * feeBps) / MFX_BPS_DENOM;
+        uint256 halfFee = feeWei / 2;
+        _feeTreasuryAccum += halfFee;
+        _feeVaultAccum += (feeWei - halfFee);
+        uint256 toSeller = b.bidWei - feeWei;
+
+        b.filled = true;
+        s.filled = true;
+        stemVolumeWei[b.stemId] += b.bidWei;
+        listerVolumeWei[msg.sender] += toSeller;
+        bidderVolumeWei[b.bidder] += b.bidWei;
+        totalVolumeWei += b.bidWei;
+        totalFeesWei += feeWei;
+        (bool toSellerOk,) = msg.sender.call{value: toSeller}("");
+        if (!toSellerOk) revert MFX_TransferFailed();
+        emit BidFilled(bidId, b.stemId, msg.sender, b.bidder, toSeller, feeWei, block.number);
+    }
+
+    function sendCollabInvite(bytes32 stemId, address invitee, uint256 shareBps) external whenNotPaused nonReentrant returns (bytes32 collabId) {
+        if (invitee == address(0)) revert MFX_ZeroAddress();
+        if (shareBps == 0 || shareBps > MFX_BPS_DENOM) revert MFX_InvalidShareBps();
+        StemListing storage s = stems[stemId];
+        if (s.lister != msg.sender) revert MFX_NotLister();
+        if (s.filled || s.delisted) revert MFX_StemNotFound();
+
+        collabSequence++;
+        collabId = _collabId(stemId, msg.sender, invitee, collabSequence);
+        if (collabs[collabId].inviter != address(0)) revert MFX_CollabNotFound();
